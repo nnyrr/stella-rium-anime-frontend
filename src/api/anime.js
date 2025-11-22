@@ -25,3 +25,16 @@ export const getTodaysPick = () => {
     )
 }
 
+export const getLibrary = (sort, year, season, limit = 10, page = 1) => {
+    return request({
+        url: '/library',
+        method: 'get',
+        params: {
+            sort,    // 排序字段
+            year,    // 年份
+            season,  // 季度
+            limit,   // 每页条数
+            page     // 页码
+        }
+    })
+}
