@@ -1,11 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-// ⚠️ 注意这里：改成了相对路径，防止 '@' 别名报错
 import AnimeCard from '../components/AnimeCard.vue'
 import HomeHero from '../components/HomeHero.vue'
-import DailySchedule from "../components/DailySchedule.vue";
+import DailySchedule from '../components/DailySchedule.vue'
+import { getDailyAnime, getPopularAnime, getTodaysPick } from '@/api/anime'
 
-// --- 1. 热门动漫数据 ---
+// --- 1. 热门动漫 (默认显示 Mock 数据，防止白屏) ---
 const hotAnimes = ref([
   { id: 1, title: '进击的巨人 Final', score: '9.8', img: 'https://picsum.photos/300/450?1', tag: '神作' },
   { id: 2, title: '鬼灭之刃 柱训练', score: '9.6', img: 'https://picsum.photos/300/450?2', tag: '热血' },
@@ -16,39 +16,123 @@ const hotAnimes = ref([
 ])
 
 // --- 2. 每日放送逻辑 ---
-// 0=周日, 1=周一 ... 6=周六
 const weekDays = [
-  { en: 'SUN', kanji: '日' },
-  { en: 'MON', kanji: '月' },
-  { en: 'TUE', kanji: '火' },
-  { en: 'WED', kanji: '水' },
-  { en: 'THU', kanji: '木' },
-  { en: 'FRI', kanji: '金' },
-  { en: 'SAT', kanji: '土' },
+  { en: 'SUN', kanji: '日' }, { en: 'MON', kanji: '月' }, { en: 'TUE', kanji: '火' },
+  { en: 'WED', kanji: '水' }, { en: 'THU', kanji: '木' }, { en: 'FRI', kanji: '金' },
+  { en: 'SAT', kanji: '土' }
 ]
 const todayIndex = new Date().getDay()
-const currentTime = ref('00:00:00') // 给个默认值防止加载瞬间空白
+const activeDay = ref(todayIndex)
+const currentTime = ref('00:00:00')
 let timer = null
 
-// 生成模拟数据
-const dailyAnimeList = ref(Array.from({ length: 10 }, (_, i) => ({
+// 每日放送 (默认 Mock 数据)
+const dailyAnimeList = ref(Array.from({ length: 5 }, (_, i) => ({
   id: i,
-  title: i % 2 === 0 ? '我推的孩子 第二季' : '无职转生 到了异世界就拿出真本事',
-  time: '23:00',
-  score: '9.5',
-  img: `https://picsum.photos/400/250?random=${i + 10}`
+  title: '加载中...',
+  img: `https://picsum.photos/400/250?random=${i}`,
 })))
 
-// 更新时间函数
+// Hero 数据 (默认 Mock 数据)
+const heroAnime = ref({
+  id: 0,
+  title: 'Stellarium Anime',
+  desc: '连接后端服务失败，当前显示演示数据。请检查 Java 后端是否启动。',
+  img: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?q=80&w=2070'
+})
+
+// --- 初始化数据 ---
+const initData = async () => {
+  try {
+    // 并行请求，失败也没关系，catch 会捕获
+    const [popularRes, dailyRes, heroRes] = await Promise.all([
+      getPopularAnime().catch(err => console.log('热门接口未通')),
+      getDailyAnime().catch(err => console.log('每日接口未通')),
+      getTodaysPick().catch(err => console.log('推荐接口未通'))
+    ])
+
+    // 只有当接口成功返回数据时，才覆盖默认数据
+    if (popularRes?.data?.list && popularRes.data.list.length > 0) {
+      hotAnimes.value = popularRes.data.list.map(item => ({
+        id: item.bangumiId,
+        title: item.nameCn || item.name,
+        score: item.rating || 'N/A',
+        img: item.image,
+        year: item.year,
+        tag: item.tag || '热门'
+      }))
+    }
+
+    if (dailyRes?.data?.list && dailyRes.data.list.length > 0) {
+      dailyAnimeList.value = dailyRes.data.list.map(item => ({
+        id: item.bangumiId,
+        title: item.nameCn || item.name,
+        img: item.image
+      }))
+    }
+
+    // 兼容 data: { "": {...} } 或 data: {...}
+    if (heroRes?.data) {
+      const heroData = heroRes.data[""] || heroRes.data
+      if (heroData && heroData.name) {
+
+        // --- 核心修改开始 ---
+        const rawNameCn = heroData.nameCn || heroData.name;
+        let mainTitle = rawNameCn;
+        let subTitle = heroData.name; // 默认副标题为原名
+
+        // 如果包含空格，则进行分割
+        if (rawNameCn && rawNameCn.includes(' ')) {
+          var firstSpaceIndex = rawNameCn.indexOf(' ');
+          mainTitle = rawNameCn.substring(0, firstSpaceIndex);
+          if(mainTitle.startsWith("剧场版")){
+            const temp = firstSpaceIndex;
+            firstSpaceIndex = rawNameCn.indexOf(' ');
+            mainTitle = rawNameCn.substring(temp+1, firstSpaceIndex);
+          }
+          // 截取空格后的所有内容作为副标题
+          subTitle = rawNameCn.substring(firstSpaceIndex + 1);
+          if(mainTitle.length<8){
+            mainTitle = rawNameCn;
+            subTitle = heroData.name;
+          }
+        }
+        // --- 核心修改结束 ---
+
+        heroAnime.value = {
+          id: heroData.bangumiId,
+          title: mainTitle,
+          subtitle: subTitle || heroData.name,
+          desc: heroData.brief || '暂无简介',
+          img: heroData.image // 注意接口大小写
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error("初始化数据异常:", error)
+  }
+}
+
 const updateTime = () => {
   const now = new Date()
   currentTime.value = now.toLocaleTimeString('zh-CN', { hour12: false })
 }
 
-// 生命周期钩子
+const goToDetail = (id) => {
+  if (id) {
+    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
+    const url = `https://bgm.tv/subject/${id}`
+    window.open(url, '_blank')
+  } else {
+    alert('未获取到番剧 ID')
+  }
+}
+
 onMounted(() => {
   updateTime()
   timer = setInterval(updateTime, 1000)
+  initData() // 尝试加载真实数据
 })
 
 onUnmounted(() => {
@@ -58,7 +142,7 @@ onUnmounted(() => {
 
 <template>
   <main>
-    <HomeHero />
+    <HomeHero :data="heroAnime"/>
     <div class="max-w-7xl mx-auto px-5 py-12">
       <div class="max-w-7xl mx-auto px-5 py-12">
         <div class="relative z-10">
@@ -91,6 +175,7 @@ onUnmounted(() => {
                 :score="anime.score"
                 :image="anime.img"
                 :tag="anime.tag"
+                @click="goToDetail(anime.id)"
             />
           </div>
         </div>
@@ -196,6 +281,7 @@ onUnmounted(() => {
                   v-for="item in dailyAnimeList"
                   :key="item.id"
                   class="group relative h-36 md:h-44 rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                  @click="goToDetail(item.id)"
               >
                 <img :src="item.img" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
 

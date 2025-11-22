@@ -2,20 +2,38 @@
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
-const handleHeroClick = () => {
-  router.push('/player') // 跳转到播放页
+const handleHeroClick = (id) => {
+  // router.push('/player') // 跳转到播放页
+  goToDetail(id);
 }
+
+const goToDetail = (id) => {
+  if (id) {
+    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
+    const url = `https://bgm.tv/subject/${id}`
+    window.open(url, '_blank')
+  } else {
+    alert('未获取到番剧 ID')
+  }
+}
+
+const props = defineProps({
+  data: {
+    type: Object,
+    default: () => null
+  }
+})
 </script>
 
 <template>
   <div class="max-w-7xl mx-auto px-5 pt-8">
     <div
-        @click="handleHeroClick"
+        @click="handleHeroClick(data.id)"
         class="relative h-[400px] md:h-[450px] w-full rounded-[2rem] overflow-hidden shadow-2xl group cursor-pointer transition-all duration-300 hover:shadow-blue-900/20 active:scale-[0.98]"
     >
 
       <img
-          src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?q=80&w=2070&auto=format&fit=crop"
+          :src="data.img"
           class="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
           alt="Hero Landscape"
       >
@@ -29,13 +47,13 @@ const handleHeroClick = () => {
           <span class="text-[#1E88E5] font-bold tracking-[0.3em] uppercase text-sm italic">今日推荐</span>
         </div>
 
-        <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter mb-4 leading-tight drop-shadow-xl opacity-0 translate-y-4 animate-fade-in-up group-hover:text-blue-50 transition-colors duration-500" style="animation-delay: 0.2s; animation-fill-mode: forwards;">
-          进击的巨人
-          <span class="block text-3xl md:text-4xl text-white/80 mt-1 font-extrabold tracking-tighter italic">Final Season</span>
+        <h1 class="text-5xl md:text-5xl font-black italic tracking-tighter mb-4 leading-tight drop-shadow-xl opacity-0 translate-y-4 animate-fade-in-up group-hover:text-blue-50 transition-colors duration-500" style="animation-delay: 0.2s; animation-fill-mode: forwards;">
+          {{data.title}}
+          <span class="block text-3xl md:text-3xl text-white/80 mt-1 font-extrabold tracking-tighter italic">{{data.subtitle}}</span>
         </h1>
 
         <p class="text-gray-400 text-sm md:text-base line-clamp-2 mb-10 font-medium max-w-lg leading-relaxed opacity-0 translate-y-4 animate-fade-in-up" style="animation-delay: 0.3s; animation-fill-mode: forwards;">
-          那一天，人类终于回想起了被巨人支配的恐惧... 史诗般的终结篇章，艾伦的选择将决定世界的命运。
+          {{ data.desc }}
         </p>
 
         <div class="flex items-center gap-4 opacity-0 translate-y-4 animate-fade-in-up group/btn" style="animation-delay: 0.4s; animation-fill-mode: forwards;">
