@@ -1,8 +1,8 @@
 <script setup>
-// 1. 确保引入了 computed
-import { onMounted, ref, watch, computed } from 'vue'
+// 1. 引入必要的 Vue 组合式 API
+import { ref, watch, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-// 2. 请确保这个路径是正确的，且 anime.js 导出了 getLibrary
+// 2. 确保路径正确
 import { getLibrary } from "@/api/anime.js";
 
 const router = useRouter()
@@ -18,6 +18,9 @@ const selectedSeason = ref(null)
 
 // 数据列表
 const animeList = ref([])
+
+// [新增] 加载状态控制
+const isLoading = ref(false)
 
 const goToDetail = () => router.push('/player')
 
@@ -65,9 +68,7 @@ const jumpValue = ref('')
 const displayedPages = computed(() => {
   const current = currentPage.value
   const pages = []
-
   // 从 current-2 开始，到 current+2 结束
-  // Math.max(1, ...) 确保不会出现 0 或负数页码
   for (let i = Math.max(1, current - 2); i <= current + 2; i++) {
     pages.push(i)
   }
@@ -77,8 +78,7 @@ const displayedPages = computed(() => {
 // 处理点击 ... 按钮
 const activateJump = () => {
   showJumpInput.value = true
-  jumpValue.value = '' // 清空之前的值
-  // 等待 DOM 更新后让输入框获得焦点
+  jumpValue.value = ''
   nextTick(() => {
     jumpPageInput.value?.focus()
   })
@@ -95,32 +95,29 @@ const handleJumpSubmit = () => {
 
 // --- 核心获取数据方法 ---
 const updateLibrary = async () => {
+  // 1. 开启加载动画
+  isLoading.value = true
+
   try {
-    // 1. 清洗年份：处理 "全部"、空字符串、null 的情况
-    // 如果是 "全部" 或者 空，则传 undefined (这样 axios/fetch 通常会直接忽略该参数，不拼接到 URL 中)
+    // 2. 参数清洗
     let cleanYear = undefined
     if (selectedYear.value && selectedYear.value !== '全部' && selectedYear.value !== '') {
-      // 强制转为数字，防止传 "2023" 字符串导致后端强类型检查失败
       cleanYear = Number(selectedYear.value)
     }
 
-    // 2. 清洗季节：如果是 null 或空，传 undefined
     let cleanSeason = selectedSeason.value || undefined
 
-    // 3. 准备最终参数对象 (用于调试和发送)
     const params = {
       sort: sortBy.value,
       year: cleanYear,
       season: cleanSeason,
-      pageSize: Number(pageSize.value), // 确保是数字
-      currentPage: Number(currentPage.value) // 确保是数字
+      pageSize: Number(pageSize.value),
+      currentPage: Number(currentPage.value)
     }
 
     console.log('🚀 发起请求 参数检查:', params)
 
-    // 调用 API
-    // 注意：这里假设你的 getLibrary 接收 5 个参数。
-    // 如果你的 api/anime.js 定义是接收一个对象，请改为 getLibrary(params)
+    // 3. 调用 API
     const updateRes = await getLibrary(
         params.sort,
         params.year,
@@ -131,7 +128,7 @@ const updateLibrary = async () => {
 
     console.log('✅ API返回:', updateRes)
 
-    // 数据处理逻辑...
+    // 4. 数据映射
     const listData = updateRes.data ? (updateRes.data.list || updateRes.data) : []
 
     if (Array.isArray(listData)) {
@@ -159,12 +156,17 @@ const updateLibrary = async () => {
     }
   }
   catch (error) {
-    // 这里可以捕获 400 错误并打印详细信息
     console.error("❌ 更新排行榜异常:", error)
     if (error.response) {
       console.error("后端报错详情:", error.response.data)
     }
     animeList.value = []
+  }
+  finally {
+    // 5. 无论成功失败，关闭加载动画（加一点延迟让视觉更平滑）
+    setTimeout(() => {
+      isLoading.value = false
+    }, 300)
   }
 }
 
@@ -209,6 +211,7 @@ watch(
         </div>
       </div>
 
+      <!--
       <div class="flex flex-col gap-3 min-h-[500px]">
 
         <div
@@ -255,6 +258,77 @@ watch(
           <p class="text-lg font-bold">暂无相关数据</p>
           <p class="text-xs mt-1">NO DATA AVAILABLE</p>
           <p class="text-[10px] mt-2 text-gray-300">请检查控制台(F12) API 是否报错</p>
+        </div>
+
+      </div>
+      -->
+
+      <div class="relative flex flex-col gap-3 min-h-[500px]">
+
+        <div
+            v-if="isLoading"
+            class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/10 backdrop-blur-[2px] rounded-lg transition-all duration-300"
+        >
+          <div class="relative flex items-center justify-center">
+            <div class="absolute w-20 h-20 rounded-full border-[6px] border-[#1E88E5]/20"></div>
+            <div class="w-20 h-20 rounded-full border-[6px] border-t-[#1E88E5] border-r-[#1E88E5] border-b-transparent border-l-transparent animate-spin shadow-[0_0_20px_rgba(30,136,229,0.4)]"></div>
+          </div>
+
+          <div class="mt-4 text-[#1E88E5] font-black italic tracking-widest text-sm animate-pulse">
+            LOADING DATA...
+          </div>
+        </div>
+
+        <div
+            class="flex flex-col gap-3 transition-all duration-300"
+            :class="isLoading ? 'blur-sm opacity-60 pointer-events-none' : 'blur-0 opacity-100'"
+        >
+          <div
+              v-for="anime in animeList"
+              :key="anime.id"
+              @click="goToDetail"
+              class="group relative flex items-center gap-6 p-4 rounded-sm border border-white/60 bg-white/40 backdrop-blur-md shadow-sm hover:bg-white/80 hover:border-[#1E88E5]/30 hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1"
+          >
+            <div class="relative w-20 h-28 flex-shrink-0 bg-gray-200 rounded-sm overflow-hidden shadow-inner group-hover:shadow-md transition-all duration-500">
+              <img v-if="anime.img" :src="anime.img" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy"/>
+              <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">NO IMG</div>
+            </div>
+
+            <div class="flex-1 flex flex-col gap-1.5 z-10 min-w-0">
+              <h3 class="text-xl font-black text-gray-900 group-hover:text-[#1E88E5] transition-colors tracking-tight truncate w-[90%]">
+                {{ anime.title }}
+              </h3>
+              <p class="text-xs font-bold text-gray-500 font-mono mb-1 truncate">{{ anime.alias }}</p>
+              <div class="flex flex-wrap gap-2">
+                  <span class="text-[10px] font-bold px-3 py-1 rounded-sm bg-white/50 border border-gray-300 text-gray-600 tracking-wide backdrop-blur-sm">
+                    {{ anime.year }}
+                  </span>
+                <span class="text-[10px] font-bold px-3 py-1 rounded-sm bg-[#1E88E5]/10 border border-[#1E88E5]/30 text-[#1E88E5] tracking-wide backdrop-blur-sm">
+                    {{ anime.season }}番
+                  </span>
+                <span v-for="tag in anime.tags" :key="tag"
+                      class="text-[10px] font-bold px-3 py-1 rounded-sm border border-gray-300 text-gray-500 bg-white/30 backdrop-blur-sm">
+                    {{ tag }}
+                  </span>
+              </div>
+            </div>
+
+            <div class="text-right z-0 pr-4">
+              <div class="text-6xl font-black italic tracking-tighter text-gray-300 leading-none group-hover:text-[#1E88E5] group-hover:scale-110 transition-all duration-300 origin-right drop-shadow-sm">
+                <span class="text-3xl align-top opacity-50 mr-1">#</span>{{ anime.rank }}
+              </div>
+              <div class="text-xs font-bold text-gray-400 tracking-widest mt-1 mr-1 group-hover:text-blue-400 transition-colors uppercase">
+                Score {{ anime.score }}
+              </div>
+            </div>
+          </div>
+
+          <div v-if="animeList.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
+            <p class="text-lg font-bold">暂无相关数据</p>
+            <p class="text-xs mt-1">NO DATA AVAILABLE</p>
+            <p class="text-[10px] mt-2 text-gray-300">请检查控制台(F12) API 是否报错</p>
+          </div>
+
         </div>
 
       </div>
