@@ -175,6 +175,7 @@ onUnmounted(() => {
                 :score="anime.score"
                 :image="anime.img"
                 :tag="anime.tag"
+                :year="anime.year"
                 @click="goToDetail(anime.id)"
             />
           </div>

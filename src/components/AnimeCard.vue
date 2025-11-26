@@ -3,7 +3,8 @@ defineProps({
   title: String,
   score: String,
   image: String,
-  tag: String
+  tag: String,
+  year: String
 })
 </script>
 
@@ -40,7 +41,7 @@ defineProps({
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">{{ tag || 'ANIME' }}</span>
               </div>
-              <span class="text-[10px] text-gray-500 font-mono font-bold">2025</span>
+              <span class="text-[10px] text-gray-500 font-mono font-bold">{{ year }}</span>
             </div>
 
             <div class="text-[#1E88E5] transform translate-x-[-10px] group-hover:translate-x-0 transition-transform duration-300">

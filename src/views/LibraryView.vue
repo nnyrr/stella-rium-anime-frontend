@@ -56,6 +56,43 @@ const getSeasonFromDate = (dateStr) => {
   }
 }
 
+// 控制跳转输入框的显示
+const showJumpInput = ref(false)
+const jumpPageInput = ref(null) // 用于获取input DOM元素
+const jumpValue = ref('')
+
+// 计算显示的页码数组 (前2页 + 当前页 + 后2页)
+const displayedPages = computed(() => {
+  const current = currentPage.value
+  const pages = []
+
+  // 从 current-2 开始，到 current+2 结束
+  // Math.max(1, ...) 确保不会出现 0 或负数页码
+  for (let i = Math.max(1, current - 2); i <= current + 2; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+// 处理点击 ... 按钮
+const activateJump = () => {
+  showJumpInput.value = true
+  jumpValue.value = '' // 清空之前的值
+  // 等待 DOM 更新后让输入框获得焦点
+  nextTick(() => {
+    jumpPageInput.value?.focus()
+  })
+}
+
+// 提交跳转
+const handleJumpSubmit = () => {
+  const p = parseInt(jumpValue.value)
+  if (p && p > 0) {
+    currentPage.value = p
+  }
+  showJumpInput.value = false
+}
+
 // --- 核心获取数据方法 ---
 const updateLibrary = async () => {
   try {
@@ -234,17 +271,80 @@ watch(
           </div>
         </div>
 
+
+
+
+
         <div class="flex items-center gap-2 select-none">
-          <button @click="currentPage > 1 && currentPage--" :disabled="currentPage === 1" class="w-10 h-10 rounded-sm border border-gray-300 bg-white/40 backdrop-blur-sm text-gray-400 hover:text-[#1E88E5] hover:border-[#1E88E5] transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-            &lt;
+          <button
+              @click="currentPage > 1 && currentPage--"
+              :disabled="currentPage === 1"
+              class="w-10 h-10 rounded-sm border border-gray-300 bg-white/40 backdrop-blur-sm text-gray-400 hover:text-[#1E88E5] hover:border-[#1E88E5] hover:bg-white/80 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
-          <span class="font-bold text-gray-600 px-2">第 {{ currentPage }} 页</span>
-          <button @click="currentPage++" class="w-10 h-10 rounded-sm border border-gray-300 bg-white/40 backdrop-blur-sm text-gray-400 hover:text-[#1E88E5] hover:border-[#1E88E5] transition-all shadow-sm active:scale-95 flex items-center justify-center">
-            &gt;
+
+          <button
+              v-for="page in displayedPages"
+              :key="page"
+              @click="currentPage = page"
+              class="relative w-10 h-10 rounded-sm font-bold text-sm transition-all duration-300 border flex items-center justify-center group"
+              :class="currentPage === page
+      ? 'border-[#1E88E5] bg-[#1E88E5]/5 text-[#1E88E5] shadow-[0_0_15px_rgba(30,136,229,0.15)] z-10 scale-105'
+      : 'border-transparent hover:border-gray-300 text-gray-500 hover:text-gray-800 hover:bg-white/50'"
+          >
+            {{ page }}
+            <div v-if="currentPage === page"
+                 class="absolute bottom-0 right-0 w-0 h-0 border-b-[6px] border-r-[6px] border-b-[#1E88E5] border-r-[#1E88E5] border-l-[6px] border-l-transparent border-t-[6px] border-t-transparent opacity-80">
+            </div>
+          </button>
+
+          <div class="relative w-10 h-10">
+            <input
+                v-if="showJumpInput"
+                ref="jumpPageInput"
+                v-model="jumpValue"
+                type="number"
+                @blur="showJumpInput = false"
+                @keyup.enter="handleJumpSubmit"
+                class="absolute inset-0 w-full h-full text-center text-xs font-bold text-[#1E88E5] bg-white border border-[#1E88E5] rounded-sm outline-none shadow-[0_0_10px_rgba(30,136,229,0.2)]"
+                placeholder="GO"
+            />
+
+            <button
+                v-else
+                @click="activateJump"
+                class="w-full h-full flex items-center justify-center text-gray-300 font-black tracking-widest hover:text-[#1E88E5] transition-colors cursor-pointer"
+                title="输入页码"
+            >
+              ...
+            </button>
+          </div>
+
+          <button
+              @click="currentPage++"
+              class="w-10 h-10 rounded-sm border border-gray-300 bg-white/40 backdrop-blur-sm text-gray-400 hover:text-[#1E88E5] hover:border-[#1E88E5] hover:bg-white/80 transition-all shadow-sm active:scale-95 flex items-center justify-center"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
           </button>
         </div>
+
+
+
+
+
+
+
+
+
+
       </div>
     </div>
+
+
+
+
+
 
     <div class="w-full md:w-1/4 relative">
       <div class="sticky top-24 space-y-10">

@@ -12,7 +12,7 @@ defineProps({
 
     <img
         :src="image"
-        class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:opacity-60"
+        class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110 group-hover:opacity-60"
         loading="lazy"
     />
 
