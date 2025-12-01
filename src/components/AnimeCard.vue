@@ -9,7 +9,7 @@ defineProps({
 </script>
 
 <template>
-  <div class="group relative w-full aspect-[2/3] rounded-xl overflow-hidden cursor-pointer bg-gray-900 shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+  <div class="group relative w-full aspect-[2/3] overflow-hidden cursor-pointer bg-gray-900 shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
 
     <img
         :src="image"

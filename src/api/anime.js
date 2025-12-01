@@ -114,3 +114,23 @@ export function getCharacterCollection(userId, limit, page) {
     })
 }
 
+export function getAnimePrediction(userId) {
+    return request({
+        url: '/prediction/anime',
+        method: 'get',
+        params: {
+            userId
+        }
+    })
+}
+
+export function getCharacterPrediction(userId){
+    return request({
+        url: '/prediction/character',
+        method: 'get',
+        params: {
+            userId
+        }
+    })
+}
+

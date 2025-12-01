@@ -168,7 +168,7 @@ onUnmounted(() => {
           </div>
 
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            <AnimeCard
+            <AnimeCard class="rounded-xl"
                 v-for="anime in hotAnimes"
                 :key="anime.id"
                 :title="anime.title"

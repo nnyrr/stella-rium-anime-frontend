@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import AnimeCard from '@/components/AnimeCard.vue'
 
+// TODO 接受前端传过来的动漫id 并用在下面的地方
+
 // 模拟剧集数据
 const episodes = ref(Array.from({ length: 12 }, (_, i) => ({
   id: i + 1,
@@ -11,11 +13,15 @@ const episodes = ref(Array.from({ length: 12 }, (_, i) => ({
 const currentEp = ref(1)
 
 // 模拟推荐
+// TODO 调用推荐接口
 const recommendations = ref([
   { id: 1, title: '鬼灭之刃', score: '9.5', img: 'https://picsum.photos/300/450?6', tag: '热血' },
   { id: 2, title: '咒术回战', score: '9.4', img: 'https://picsum.photos/300/450?13', tag: '战斗' },
   { id: 3, title: '链锯人', score: '9.2', img: 'https://picsum.photos/300/450?14', tag: '猎奇' },
   { id: 4, title: '死神', score: '9.1', img: 'https://picsum.photos/300/450?15', tag: '经典' },
+  { id: 5, title: '死神2', score: '9.1', img: 'https://picsum.photos/300/450?15', tag: '经典' },
+  { id: 6, title: '死神3', score: '9.1', img: 'https://picsum.photos/300/450?15', tag: '经典' },
+
 ])
 
 // 跳转 Bangumi
@@ -23,6 +29,7 @@ const goToBangumi = () => {
   // 这里应该跳转到具体的番剧页面ID，暂时跳首页演示
   window.open('https://bgm.tv/', '_blank')
 }
+
 </script>
 
 <template>
@@ -62,18 +69,12 @@ const goToBangumi = () => {
             </div>
 
             <div class="flex gap-4">
-              <button class="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <div class="w-10 h-10 rounded-sm bg-gray-800 flex items-center justify-center group-hover:bg-pink-500 transition-colors">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                </div>
-                <span class="text-sm font-bold hidden md:block">收藏</span>
-              </button>
 
               <button @click="goToBangumi" class="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
                 <div class="w-10 h-10 rounded-sm bg-gray-800 flex items-center justify-center group-hover:bg-[#F35C87] transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </div>
-                <span class="text-sm font-bold hidden md:block tracking-widest">BANGUMI</span>
+                <span class="text-sm font-bold hidden md:block tracking-widest">BGM</span>
               </button>
             </div>
           </div>
@@ -104,7 +105,7 @@ const goToBangumi = () => {
                   <span v-else class="w-4 text-xs font-mono text-gray-600">{{ ep.id < 10 ? '0'+ep.id : ep.id }}</span>
                   <span class="text-sm font-bold truncate">{{ ep.title }}</span>
                 </div>
-                <span class="text-xs font-mono text-gray-600 group-hover:text-gray-400">{{ ep.duration }}</span>
+
               </button>
             </div>
           </div>
@@ -117,7 +118,7 @@ const goToBangumi = () => {
       <div class="bg-white/60 backdrop-blur-md rounded-sm shadow-xl p-6 md:p-10 border border-white/40">
 
         <div class="flex flex-col md:flex-row gap-16">
-          <div class="w-full md:w-3/4">
+          <div class="w-full md:w-4/4">
             <div class="flex items-center gap-3 mb-6">
               <div class="w-1.5 h-6 bg-[#1E88E5]"></div>
               <h2 class="text-2xl font-black italic text-gray-900 tracking-tighter">SYNOPSIS</h2>
@@ -135,8 +136,7 @@ const goToBangumi = () => {
             <div class="mt-16">
               <div class="flex items-center justify-between mb-8 border-b border-gray-200/50 pb-4">
                 <h2 class="text-2xl font-black italic text-gray-900 tracking-tighter">RECOMMENDATIONS</h2>
-                <button class="text-sm font-bold text-gray-500 hover:text-[#1E88E5] transition-colors">VIEW MORE</button>
-              </div>
+                </div>
 
               <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <AnimeCard
