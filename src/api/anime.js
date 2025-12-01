@@ -134,3 +134,24 @@ export function getCharacterPrediction(userId){
     })
 }
 
+/**
+ * 获取动漫详情 (包含基本信息和剧集列表)
+ * @param {Number|String} id 动漫ID
+ */
+export const getAnimeDetail = (id) => {
+    return request({
+        url: `/player/${id}`, // RESTful 风格，或者根据你后端实际情况改为 /anime/detail?id=...
+        method: 'get'
+    })
+}
+
+/**
+ * 获取动漫详情页的推荐列表
+ * @param {Number|String} id 动漫ID (基于当前动漫推荐相似的)
+ */
+export const getAnimeRecommendations = (id) => {
+    return request({
+        url: `/prediction/${id}`,
+        method: 'get'
+    })
+}
