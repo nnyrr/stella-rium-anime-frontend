@@ -133,6 +133,14 @@ const goToDetail = (id) => {
   }*/
 }
 
+const goToPrediction = () => {
+  router.push(`/prediction`)
+}
+
+const goToTogether = () => {
+  router.push(`/watch`)
+}
+
 onMounted(() => {
   updateTime()
   timer = setInterval(updateTime, 1000)
@@ -323,7 +331,7 @@ onUnmounted(() => {
 
           <div class="absolute inset-0 bg-black/40 group-hover:bg-indigo-900/30 transition-colors duration-500"></div>
 
-          <div class="absolute inset-0 flex flex-col justify-center items-center text-white z-10">
+          <div @click = "goToTogether" class="absolute inset-0 flex flex-col justify-center items-center text-white z-10">
             <h3 class="text-5xl md:text-6xl font-black italic tracking-tighter drop-shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:-rotate-2">
               一起看放映室
             </h3>
@@ -344,7 +352,7 @@ onUnmounted(() => {
 
           <div class="absolute inset-0 bg-gradient-to-t from-blue-900/60 via-transparent to-black/40 group-hover:from-purple-900/60 transition-colors duration-500"></div>
 
-          <div class="absolute inset-0 flex flex-col justify-center items-center text-white z-10">
+          <div @click = "goToPrediction" class="absolute inset-0 flex flex-col justify-center items-center text-white z-10">
             <h3 class="text-5xl md:text-6xl font-black italic tracking-tighter drop-shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-2">
               AI 预测
             </h3>

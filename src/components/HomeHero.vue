@@ -8,13 +8,14 @@ const handleHeroClick = (id) => {
 }
 
 const goToDetail = (id) => {
-  if (id) {
+  router.push(`/player/${id}`)
+  /*if (id) {
     // 使用模板字符串拼接 ID，_blank 表示新窗口打开
     const url = `https://bgm.tv/subject/${id}`
     window.open(url, '_blank')
   } else {
     alert('未获取到番剧 ID')
-  }
+  }*/
 }
 
 const props = defineProps({

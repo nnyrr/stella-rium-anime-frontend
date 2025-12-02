@@ -22,7 +22,16 @@ const animeList = ref([])
 // [新增] 加载状态控制
 const isLoading = ref(false)
 
-const goToDetail = () => router.push('/player')
+const goToDetail = (id) => {
+  router.push(`/player/${id}`)
+  /*if (id) {
+    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
+    const url = `https://bgm.tv/subject/${id}`
+    window.open(url, '_blank')
+  } else {
+    alert('未获取到番剧 ID')
+  }*/
+}
 
 // --- 年份筛选逻辑 ---
 const presetYears = ['全部', '2024', '2023', '2022', '2021']
@@ -286,7 +295,7 @@ watch(
           <div
               v-for="anime in animeList"
               :key="anime.id"
-              @click="goToDetail"
+              @click="goToDetail(anime.id)"
               class="group relative flex items-center gap-6 p-4 rounded-sm border border-white/60 bg-white/40 backdrop-blur-md shadow-sm hover:bg-white/80 hover:border-[#1E88E5]/30 hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1"
           >
             <div class="relative w-20 h-28 flex-shrink-0 bg-gray-200 rounded-sm overflow-hidden shadow-inner group-hover:shadow-md transition-all duration-500">

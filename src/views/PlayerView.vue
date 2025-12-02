@@ -77,24 +77,45 @@ const loadData = async (id) => {
  * 切换剧集逻辑
  * @param {Object} ep 选中的剧集对象
  */
-const changeEpisode = (ep) => {
-  // [修改点 2] 逻辑保护：如果后端返回的 url 为空，拦截操作
+const changeEpisode = async (ep) => {
+  // 逻辑保护：如果后端返回的 url 为空，拦截操作
   if (!ep.url) {
     showErrorToast(`"${ep.title}" 暂无播放资源`)
     return
   }
 
+  // 1. 设置当前选中集数 UI 状态
   currentEp.value = ep
+  // 重置封面（防止上一集的封面残留）
   playerOption.value.poster = animeInfo.value.cover
 
-  // 构造代理链接
-  const rawUrl = ep.url
-  const resolveRes = await Promise( resolveVideoUrl(rawUrl))
+  // 2. 解析真实播放地址
+  try {
+    const rawUrl = ep.url
+    // 修复语法错误：直接 await 函数调用即可
+    const resolveRes = await resolveVideoUrl(rawUrl)
 
-  const videoUrl = null
+    // 假设后端返回结构是 { code: 200, data: "https://example.com/video.m3u8" }
+    // 如果后端直接返回 URL 字符串，则使用 resolveRes
+    const videoUrl = resolveRes.data || resolveRes
 
-  console.log(`切换集数: ${ep.title}, 源html文件: ${rawUrl}, 视频url: ${}`)
-  playerOption.value.url = videoUrl
+    console.log(`切换集数: ${ep.title}, 源地址: ${rawUrl}, 解析后: ${videoUrl}`)
+
+    // 3. 更新播放器配置
+    playerOption.value = {
+      ...playerOption.value,
+      url: videoUrl,
+      // 在这里添加你需要的 Referer 或其他 Header
+      headers: {
+        // 注意：浏览器通常禁止手动修改 Referer，这取决于目标服务器的宽松程度
+        // 如果是 Token 验证通常用 Authorization
+        'Referer': 'www.google.com',
+      }
+    }
+  } catch (error) {
+    console.error("解析视频地址失败:", error)
+    showErrorToast("视频地址解析失败")
+  }
 }
 
 // 跳转到 Bangumi
@@ -103,6 +124,17 @@ const goToBangumi = () => {
       ? `https://bgm.tv/subject/${animeInfo.value.bangumiId}`
       : 'https://bgm.tv/'
   window.open(url, '_blank')
+}
+
+const goToDetail = (id) => {
+  router.push(`/player/${id}`)
+  /*if (id) {
+    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
+    const url = `https://bgm.tv/subject/${id}`
+    window.open(url, '_blank')
+  } else {
+    alert('未获取到番剧 ID')
+  }*/
 }
 
 // 监听路由 ID 变化
@@ -250,6 +282,7 @@ watch(() => route.params.id, (newId) => {
                       :image="rec.img"
                       :tag="rec.tag"
                       :year="rec.year"
+                      @click="goToDetail(rec.id)"
                   />
                 </div>
                 <div v-else class="text-gray-500 text-center py-10">
