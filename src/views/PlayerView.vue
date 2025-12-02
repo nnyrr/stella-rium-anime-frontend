@@ -4,12 +4,12 @@ import { useRoute } from 'vue-router'
 import AnimeCard from '@/components/AnimeCard.vue'
 import ArtPlayer from '@/components/ArtPlayer.vue'
 import { showErrorToast } from "@/utils/toast.js";
-import { getAnimeDetail, getAnimeRecommendations } from '@/api/anime.js'
+import {getAnimeDetail, getAnimeRecommendations, resolveVideoUrl} from '@/api/anime.js'
 
 const route = useRoute()
 
 // --- 状态定义 ---
-const isLoading = ref(true)
+const isLoading = ref(false)
 const animeInfo = ref({})       // 动漫详情对象
 const episodes = ref([])        // 剧集列表
 const currentEp = ref(null)     // 当前播放的集数对象
@@ -47,26 +47,21 @@ const loadData = async (id) => {
 
     episodes.value = data.episodes || []
 
-    if (episodes.value.length > 0) {
-      changeEpisode(episodes.value[0])
+    // [修改点 1] 智能初始化：自动寻找第一个有资源的集数播放，而不是默认第一集
+    const firstAvailableEp = episodes.value.find(ep => ep.url)
+    if (firstAvailableEp) {
+      changeEpisode(firstAvailableEp)
     }
 
-    // --- 处理相关推荐 (参考 PredictionView 的映射逻辑) ---
-    // 假设后端返回结构为 { data: { list: [...] } } 或者直接是 { data: [...] }
-    const recList = recRes.data?.list
+    // --- 处理相关推荐 ---
+    const recList = recRes.data?.list || recRes.data || [] // 兼容不同结构
 
     recommendations.value = recList.map(item => ({
-      // 使用 bangumiId 作为跳转 ID
       id: item.bangumiId,
-      // 优先显示中文名
       title: item.nameCn || item.name,
-      // 评分处理
       score: item.rating || 'N/A',
-      // 图片字段映射
       img: item.image,
-      // 年份
       year: item.year,
-      // 标签处理
       tag: item.tag || '相关推荐'
     }))
 
@@ -83,15 +78,23 @@ const loadData = async (id) => {
  * @param {Object} ep 选中的剧集对象
  */
 const changeEpisode = (ep) => {
+  // [修改点 2] 逻辑保护：如果后端返回的 url 为空，拦截操作
+  if (!ep.url) {
+    showErrorToast(`"${ep.title}" 暂无播放资源`)
+    return
+  }
+
   currentEp.value = ep
   playerOption.value.poster = animeInfo.value.cover
 
   // 构造代理链接
   const rawUrl = ep.url
-  const proxyUrl = `${import.meta.env.VITE_APP_BASE_API || '/api'}/proxy/m3u8?url=${encodeURIComponent(rawUrl)}`
+  const resolveRes = await Promise( resolveVideoUrl(rawUrl))
 
-  console.log(`切换集数: ${ep.title}, 原始流: ${rawUrl}, 代理流: ${proxyUrl}`)
-  playerOption.value.url = proxyUrl
+  const videoUrl = null
+
+  console.log(`切换集数: ${ep.title}, 源html文件: ${rawUrl}, 视频url: ${}`)
+  playerOption.value.url = videoUrl
 }
 
 // 跳转到 Bangumi
@@ -112,7 +115,7 @@ watch(() => route.params.id, (newId) => {
 </script>
 
 <template>
-  <div class="min-h-screen pb-12 bg-[#0B0C10]">
+  <div class="min-h-screen pb-12">
 
     <div v-if="isLoading" class="fixed inset-0 bg-[#0B0C10] z-50 flex flex-col items-center justify-center text-white">
       <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -132,7 +135,11 @@ watch(() => route.params.id, (newId) => {
                   :option="playerOption"
                   class="w-full h-full z-30"
               />
-              <div v-else class="text-gray-500 font-mono">NO SIGNAL</div>
+              <div v-else class="text-gray-500 font-mono flex flex-col items-center gap-2">
+                <span>NO SIGNAL</span>
+                <span v-if="episodes.length > 0 && !currentEp" class="text-xs text-gray-600">请选择集数</span>
+                <span v-if="episodes.length === 0" class="text-xs text-gray-600">暂无资源</span>
+              </div>
 
               <div class="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-gray-600 z-40 pointer-events-none"></div>
               <div class="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-gray-600 z-40 pointer-events-none"></div>
@@ -147,10 +154,10 @@ watch(() => route.params.id, (newId) => {
                 </h1>
                 <div class="flex items-center gap-3 text-xs font-bold text-gray-400">
                   <span class="bg-[#1E88E5] text-white px-2 py-0.5 rounded-sm">
-                    EP.{{ currentEp?.sort }}
+                    EP.{{ currentEp?.sort || '?' }}
                   </span>
                   <span>{{ animeInfo.year }}</span>
-                  <span>•</span>
+                  <span v-if="currentEp">•</span>
                   <span>{{ currentEp?.title }}</span>
                 </div>
               </div>
@@ -178,21 +185,28 @@ watch(() => route.params.id, (newId) => {
                     v-for="ep in episodes"
                     :key="ep.sort"
                     @click="changeEpisode(ep)"
+                    :disabled="!ep.url"
                     class="w-full flex items-center justify-between p-3 rounded-sm transition-all duration-200 group border-l-2"
-                    :class="currentEp?.sort === ep.sort
-                    ? 'bg-[#1E88E5]/10 border-[#1E88E5] text-white'
-                    : 'border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'"
+                    :class="[
+                      currentEp?.sort === ep.sort
+                        ? 'bg-[#1E88E5]/10 border-[#1E88E5] text-white'
+                        : (!ep.url ? 'border-transparent opacity-40 cursor-not-allowed' : 'border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200')
+                    ]"
                 >
-                  <div class="flex items-center gap-3">
-                    <div v-if="currentEp?.sort === ep.sort" class="w-4 flex justify-center gap-0.5">
+                  <div class="flex items-center gap-3 overflow-hidden">
+                    <div v-if="currentEp?.sort === ep.sort" class="w-4 flex justify-center gap-0.5 flex-shrink-0">
                       <div class="w-1 h-3 bg-[#1E88E5] animate-[pulse_1s_ease-in-out_infinite]"></div>
                       <div class="w-1 h-4 bg-[#1E88E5] animate-[pulse_1.2s_ease-in-out_infinite]"></div>
                       <div class="w-1 h-2 bg-[#1E88E5] animate-[pulse_0.8s_ease-in-out_infinite]"></div>
                     </div>
-                    <span v-else class="w-4 text-xs font-mono text-gray-600">
+                    <span v-else class="w-4 text-xs font-mono text-gray-600 flex-shrink-0">
                       {{ ep.sort < 10 ? '0'+ep.sort : ep.sort }}
                     </span>
-                    <span class="text-sm font-bold truncate">{{ ep.title }}</span>
+
+                    <span class="text-sm font-bold truncate flex items-center">
+                      {{ ep.title }}
+                      <span v-if="!ep.url" class="ml-2 text-[10px] text-red-400 border border-red-400/30 px-1 rounded bg-red-900/10 whitespace-nowrap">无资源</span>
+                    </span>
                   </div>
                 </button>
               </div>
@@ -203,7 +217,7 @@ watch(() => route.params.id, (newId) => {
       </div>
 
       <div class="max-w-[1400px] mx-auto px-5 mt-8 relative z-10">
-        <div class="bg-white/60 backdrop-blur-md rounded-sm shadow-xl p-6 md:p-10 border border-white/40">
+        <div class="backdrop-blur-md rounded-sm shadow-xl p-6 md:p-10 border border-white/40">
 
           <div class="flex flex-col md:flex-row gap-16">
             <div class="w-full">

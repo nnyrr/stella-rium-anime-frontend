@@ -75,7 +75,7 @@ export function deleteFile(uuid) {
     return request({
         url: '/common/file',
         method: 'delete',
-        data: { uuid } // Axios 中 DELETE 发送 Body 需要放在 data 字段里
+        data: {uuid} // Axios 中 DELETE 发送 Body 需要放在 data 字段里
     })
 }
 
@@ -124,7 +124,7 @@ export function getAnimePrediction(userId) {
     })
 }
 
-export function getCharacterPrediction(userId){
+export function getCharacterPrediction(userId) {
     return request({
         url: '/prediction/character',
         method: 'get',
@@ -140,7 +140,7 @@ export function getCharacterPrediction(userId){
  */
 export const getAnimeDetail = (id) => {
     return request({
-        url: `/player/${id}`, // RESTful 风格，或者根据你后端实际情况改为 /anime/detail?id=...
+        url: `/player/${id}`,
         method: 'get'
     })
 }
@@ -155,3 +155,5 @@ export const getAnimeRecommendations = (id) => {
         method: 'get'
     })
 }
+
+export const resolveVideoUrl = (url) => request({url: '/proxy/resolve', method: 'get', params: {url}})

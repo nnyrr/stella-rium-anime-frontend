@@ -9,7 +9,7 @@ const router = createRouter({
         { path: '/prediction', name: 'prediction', component: () => import('../views/PredictionView.vue') },
         { path: '/watch', name: 'watch', component: () => import('../views/WatchListView.vue') },
         { path: '/collection', name: 'collection', component: () => import('../views/CollectionView.vue') },
-        { path: '/player', name: 'player', component: () => import('../views/PlayerView.vue') },
+        { path: '/player/:id', name: 'player', component: () => import('../views/PlayerView.vue') },
         { path: '/login', name: 'login', component: () => import('../views/LoginView.vue') },
     ],
     // 切换页面时滚动到顶部

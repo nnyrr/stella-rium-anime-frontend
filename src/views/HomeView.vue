@@ -4,6 +4,9 @@ import AnimeCard from '../components/AnimeCard.vue'
 import HomeHero from '../components/HomeHero.vue'
 import DailySchedule from '../components/DailySchedule.vue'
 import { getDailyAnime, getPopularAnime, getTodaysPick } from '@/api/anime'
+import {useRouter} from "vue-router";
+
+const router = useRouter()
 
 // --- 1. 热门动漫 (默认显示 Mock 数据，防止白屏) ---
 const hotAnimes = ref([
@@ -120,13 +123,14 @@ const updateTime = () => {
 }
 
 const goToDetail = (id) => {
-  if (id) {
+  router.push(`/player/${id}`)
+  /*if (id) {
     // 使用模板字符串拼接 ID，_blank 表示新窗口打开
     const url = `https://bgm.tv/subject/${id}`
     window.open(url, '_blank')
   } else {
     alert('未获取到番剧 ID')
-  }
+  }*/
 }
 
 onMounted(() => {
