@@ -157,3 +157,43 @@ export const getAnimeRecommendations = (id) => {
 }
 
 export const resolveVideoUrl = (url) => request({url: '/proxy/resolve', method: 'get', params: {url}})
+
+export const createRoom = (title, animeId, password, userId) => {
+    return request(
+        {
+            url: `/together`,
+            method: 'post',
+            params:{
+                title: title,
+                animeId: animeId,
+                password: password,
+                userId: userId
+            }
+        }
+    )
+}
+
+/**
+ * {
+ *     "code": 200,
+ *     "msg": "操作成功",
+ *     "data": [
+ *         {
+ *             "id": 0,
+ *             "title": "string",
+ *             "animeId": 0,
+ *             "currentEpisode": 0,
+ *             "ownerId": 0,
+ *             "onlineCount": 0,
+ *             "status": 0,
+ *             "cover": "string"
+ *         }
+ *     ]
+ * }
+ */
+export const getRoom = () => {
+    return request({
+        url: `/together`,
+        method: 'get'
+    })
+}

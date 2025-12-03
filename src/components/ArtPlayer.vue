@@ -19,6 +19,7 @@ const props = defineProps({
 
 const artRef = ref(null)
 const instance = ref(null)
+const emits = defineEmits(['get-instance'])
 
 // 初始化播放器逻辑
 const initPlayer = () => {
@@ -83,6 +84,7 @@ const initPlayer = () => {
   }
 
   instance.value = new Artplayer(conf)
+  emits('get-instance', instance.value)
 }
 
 // 监听 url 变化，切换视频

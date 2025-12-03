@@ -1,17 +1,69 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { getRoom } from '@/api/anime' // 确保 api 路径正确
+import CreateRoomModal from "@/components/CreateRoomModal.vue";
 
-const rooms = ref([
-  { id: 1, title: '热血动漫房', anime: '进击的巨人', cover: 'https://picsum.photos/300/200?7', progress: '12:30 / 24:00', percent: 52, online: 24, creator: '动漫迷', tags: ['高燃', '慎入'] },
-  { id: 2, title: '治愈系小屋', anime: '夏目友人帐', cover: 'https://picsum.photos/300/200?8', progress: '05:10 / 22:00', percent: 23, online: 8, creator: '猫老师', tags: ['放松', '聊天'] },
-  { id: 3, title: '咒术回战涉谷篇', anime: '咒术回战', cover: 'https://picsum.photos/300/200?9', progress: '18:45 / 23:10', percent: 80, online: 156, creator: '五条悟', tags: ['剧透警告'] }
-])
+const router = useRouter()
+const rooms = ref([])
+const isModalOpen = ref(false)
 
-const handleRefresh = () => alert('刷新房间列表...')
+// 获取房间列表逻辑
+const fetchRooms = async () => {
+  try {
+    const res = await getRoom()
+    if (res.code === 200) {
+      // 映射后端数据
+      rooms.value = res.data.map(r => ({
+        id: r.id,
+        title: r.title,
+        // 如果后端返回了 animeName 则使用，否则显示 ID
+        anime: r.animeName || `Anime #${r.animeId}`,
+        animeId: r.animeId,
+        cover: r.cover || 'https://picsum.photos/300/200',
+        online: r.onlineCount || 0,
+        creator: r.ownerId || 'System',
+        status: r.status,
+        percent: 0 // 进度条占位
+      }))
+    }
+  } catch (e) {
+    console.error('Fetch rooms failed:', e)
+  }
+}
+
+// 创建成功回调
+const handleCreateSuccess = (roomData) => {
+  // 假设 roomData 包含 { id: 1, animeId: 100 }
+  // 跳转逻辑: /player/:animeId?roomId=xxx
+  router.push({
+    path: `/player/${roomData.animeId}`,
+    query: { roomId: roomData.id }
+  })
+}
+
+// 进入房间逻辑
+const enterRoom = (room) => {
+  router.push({
+    path: `/player/${room.animeId}`,
+    query: { roomId: room.id }
+  })
+}
+
+// 初始化加载
+onMounted(() => {
+  fetchRooms()
+})
 </script>
 
 <template>
   <div class="max-w-7xl mx-auto px-5 py-12 min-h-screen">
+
+    <CreateRoomModal
+        :is-open="isModalOpen"
+        @close="isModalOpen = false"
+        @created="handleCreateSuccess"
+    />
 
     <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 border-b-4 border-gray-800 pb-6">
       <div>
@@ -29,33 +81,29 @@ const handleRefresh = () => alert('刷新房间列表...')
       </div>
 
       <div class="flex gap-4 h-16">
-
         <button
-            @click="handleRefresh"
+            @click="fetchRooms"
             class="w-16 h-full rounded-sm bg-white/40 backdrop-blur-md border border-white/20 shadow-sm hover:bg-white/60 hover:shadow-lg hover:border-[#1E88E5]/30 flex items-center justify-center transition-all duration-300 active:scale-95 group"
         >
           <svg class="w-6 h-6 text-gray-400 group-hover:text-[#1E88E5] group-hover:rotate-180 transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
         </button>
 
-        <div class="relative w-56 h-full rounded-sm overflow-hidden cursor-pointer group shadow-lg shadow-blue-900/20 hover:shadow-blue-500/30 transition-all duration-300 active:scale-[0.98] select-none">
-
+        <div
+            @click="isModalOpen = true"
+            class="relative w-56 h-full rounded-sm overflow-hidden cursor-pointer group shadow-lg shadow-blue-900/20 hover:shadow-blue-500/30 transition-all duration-300 active:scale-[0.98] select-none"
+        >
           <div class="absolute inset-0 bg-gradient-to-br from-[#1E88E5] to-blue-700"></div>
-
           <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:8px_8px]"></div>
-
           <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10"></div>
-
           <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out z-10"></div>
 
           <div class="absolute inset-0 flex items-center justify-center gap-3 text-white z-20">
             <svg class="w-5 h-5 drop-shadow-md group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-
             <div class="flex flex-col items-start">
               <span class="text-lg font-black italic tracking-[0.15em] leading-none drop-shadow-sm">创建房间</span>
               <span class="text-[8px] font-bold uppercase tracking-widest text-blue-200 group-hover:text-white transition-colors">Host New Party</span>
             </div>
           </div>
-
           <div class="absolute bottom-0 left-0 w-full h-[2px] bg-blue-400/50"></div>
         </div>
 
@@ -66,10 +114,11 @@ const handleRefresh = () => alert('刷新房间列表...')
       <div
           v-for="room in rooms"
           :key="room.id"
+          @click="enterRoom(room)"
           class="group relative rounded-sm border border-white/60 bg-white/40 backdrop-blur-md hover:bg-white/60 hover:border-[#1E88E5]/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-900/5 cursor-pointer overflow-hidden"
       >
         <div class="relative h-48 overflow-hidden bg-gray-900">
-          <img :src="room.cover" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" />
+          <img :src="room.cover" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"  alt=""/>
           <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
 
@@ -100,7 +149,7 @@ const handleRefresh = () => alert('刷新房间列表...')
           <div class="flex items-center justify-between border-t border-gray-300/30 pt-4 mt-4">
             <div class="flex items-center gap-2">
               <div class="w-6 h-6 bg-gradient-to-br from-gray-200 to-gray-300 rounded-sm overflow-hidden border border-white/50">
-                <img :src="`https://api.dicebear.com/7.x/initials/svg?seed=${room.creator}`" class="w-full h-full object-cover"/>
+                <img :src="`https://api.dicebear.com/7.x/initials/svg?seed=${room.creator}`" class="w-full h-full object-cover" alt=""/>
               </div>
               <span class="text-xs font-bold text-gray-600">{{ room.creator }}</span>
             </div>

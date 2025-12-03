@@ -123,14 +123,12 @@ const updateTime = () => {
 }
 
 const goToDetail = (id) => {
-  router.push(`/player/${id}`)
-  /*if (id) {
-    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
-    const url = `https://bgm.tv/subject/${id}`
-    window.open(url, '_blank')
-  } else {
-    alert('未获取到番剧 ID')
-  }*/
+  router.push({
+    name: 'player', // 对应 router/index.js 中的 name: 'player'
+    params: {
+      id: id   // 对应 path: '/player/:id' 中的 :id
+    }
+  })
 }
 
 const goToPrediction = () => {

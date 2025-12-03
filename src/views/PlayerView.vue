@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AnimeCard from '@/components/AnimeCard.vue'
 import ArtPlayer from '@/components/ArtPlayer.vue'
 import { showErrorToast } from "@/utils/toast.js";
-import {getAnimeDetail, getAnimeRecommendations, resolveVideoUrl} from '@/api/anime.js'
+import { getAnimeDetail, getAnimeRecommendations, resolveVideoUrl } from '@/api/anime.js'
+import WatchPartyOverlay from "@/components/WatchPartyOverlay.vue";
 
 const route = useRoute()
 
@@ -20,6 +21,21 @@ const playerOption = ref({
   url: '',
   poster: '',
 })
+
+// 从路由参数中获取房间号
+const roomId = computed(() => route.query.roomId)
+
+// 引用子组件实例 (WatchPartyOverlay)
+const overlayRef = ref(null)
+// 引用播放器实例 (ArtPlayer)
+const artInstance = ref(null)
+
+const onPlayerReady = (art) => {
+  console.log('播放器实例已获取', art)
+  artInstance.value = art
+  // 如果你需要在一开始就让播放器静音或者做其他设置
+  // art.volume = 0.5
+}
 
 /**
  * 核心逻辑：加载所有数据
@@ -47,14 +63,15 @@ const loadData = async (id) => {
 
     episodes.value = data.episodes || []
 
-    // [修改点 1] 智能初始化：自动寻找第一个有资源的集数播放，而不是默认第一集
+    // 智能初始化：自动寻找第一个有资源的集数播放
     const firstAvailableEp = episodes.value.find(ep => ep.url)
     if (firstAvailableEp) {
-      changeEpisode(firstAvailableEp)
+      // 初始化加载不算“远程指令”，也不算“主动操作”，只是默认行为
+      await changeEpisode(firstAvailableEp, true) // 这里传 true 是为了不触发 WebSocket 发送（避免刚进房间就广播）
     }
 
     // --- 处理相关推荐 ---
-    const recList = recRes.data?.list || recRes.data || [] // 兼容不同结构
+    const recList = recRes.data?.list || recRes.data || []
 
     recommendations.value = recList.map(item => ({
       id: item.bangumiId,
@@ -76,8 +93,11 @@ const loadData = async (id) => {
 /**
  * 切换剧集逻辑
  * @param {Object} ep 选中的剧集对象
+ * @param {Boolean} isRemote 是否是远程触发（或者初始化）的操作。
+ * true: 不发送 WebSocket 指令（防止死循环或初始化广播）
+ * false: 发送 WebSocket 指令（告诉别人我切集了）
  */
-const changeEpisode = async (ep) => {
+const changeEpisode = async (ep, isRemote = false) => {
   // 逻辑保护：如果后端返回的 url 为空，拦截操作
   if (!ep.url) {
     showErrorToast(`"${ep.title}" 暂无播放资源`)
@@ -86,17 +106,13 @@ const changeEpisode = async (ep) => {
 
   // 1. 设置当前选中集数 UI 状态
   currentEp.value = ep
-  // 重置封面（防止上一集的封面残留）
+  // 重置封面
   playerOption.value.poster = animeInfo.value.cover
 
   // 2. 解析真实播放地址
   try {
     const rawUrl = ep.url
-    // 修复语法错误：直接 await 函数调用即可
     const resolveRes = await resolveVideoUrl(rawUrl)
-
-    // 假设后端返回结构是 { code: 200, data: "https://example.com/video.m3u8" }
-    // 如果后端直接返回 URL 字符串，则使用 resolveRes
     const videoUrl = resolveRes.data || resolveRes
 
     console.log(`切换集数: ${ep.title}, 源地址: ${rawUrl}, 解析后: ${videoUrl}`)
@@ -105,16 +121,41 @@ const changeEpisode = async (ep) => {
     playerOption.value = {
       ...playerOption.value,
       url: videoUrl,
-      // 在这里添加你需要的 Referer 或其他 Header
       headers: {
-        // 注意：浏览器通常禁止手动修改 Referer，这取决于目标服务器的宽松程度
-        // 如果是 Token 验证通常用 Authorization
         'Referer': 'www.google.com',
       }
     }
+
+    // 4. 【核心逻辑】如果是主动切换（非远程），且在房间内，则通知其他人
+    if (!isRemote && roomId.value && overlayRef.value) {
+      console.log('主动切集，发送同步指令:', ep.sort)
+      overlayRef.value.syncEpisodeChange({
+        sort: ep.sort,
+        title: ep.title,
+        url: ep.url // 视后端需求，可能只需要 ID 或 Sort
+      })
+    }
+
   } catch (error) {
     console.error("解析视频地址失败:", error)
     showErrorToast("视频地址解析失败")
+  }
+}
+
+/**
+ * 处理远程传来的切集指令
+ * @param {Object} payload WebSocket 传来的数据 { sort: 2, ... }
+ */
+const handleRemoteEpisodeChange = (payload) => {
+  console.log('收到远程切集指令:', payload)
+  // 根据 sort 找到对应的集数对象
+  const targetEp = episodes.value.find(e => e.sort === payload.sort)
+
+  if (targetEp) {
+    // 调用切换逻辑，标记为 isRemote=true，避免再次发送指令
+    changeEpisode(targetEp, true)
+  } else {
+    console.warn('未找到对应的集数:', payload.sort)
   }
 }
 
@@ -126,15 +167,15 @@ const goToBangumi = () => {
   window.open(url, '_blank')
 }
 
+// 推荐点击跳转
 const goToDetail = (id) => {
-  router.push(`/player/${id}`)
-  /*if (id) {
-    // 使用模板字符串拼接 ID，_blank 表示新窗口打开
-    const url = `https://bgm.tv/subject/${id}`
-    window.open(url, '_blank')
-  } else {
-    alert('未获取到番剧 ID')
-  }*/
+  // Vue Router 跳转
+  // 注意：如果在 setup 中，建议使用 router.push 而不是 this.$router
+  // const router = useRouter() // 需要上面引入 useRouter
+  // router.push(...)
+  // 这里直接修改 location 或者 watch 监听 route 变化都可以，
+  // 只要 route.params.id 变了，watch 会自动 reload
+  route.push(`/player/${id}`)
 }
 
 // 监听路由 ID 变化
@@ -155,6 +196,15 @@ watch(() => route.params.id, (newId) => {
     </div>
 
     <div v-else>
+      <WatchPartyOverlay
+          v-if="roomId"
+          ref="overlayRef"
+          :room-id="roomId"
+          :anime-title="animeInfo.title"
+          :player-instance="artInstance"
+          @change-episode="handleRemoteEpisodeChange"
+      />
+
       <div class="bg-[#0B0C10] text-white pt-8 pb-12 relative overflow-hidden z-20">
         <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-900/10 blur-[120px] pointer-events-none"></div>
 
@@ -166,6 +216,7 @@ watch(() => route.params.id, (newId) => {
                   v-if="playerOption.url"
                   :option="playerOption"
                   class="w-full h-full z-30"
+                  @get-instance="onPlayerReady"
               />
               <div v-else class="text-gray-500 font-mono flex flex-col items-center gap-2">
                 <span>NO SIGNAL</span>
@@ -216,7 +267,7 @@ watch(() => route.params.id, (newId) => {
                 <button
                     v-for="ep in episodes"
                     :key="ep.sort"
-                    @click="changeEpisode(ep)"
+                    @click="changeEpisode(ep, false)"
                     :disabled="!ep.url"
                     class="w-full flex items-center justify-between p-3 rounded-sm transition-all duration-200 group border-l-2"
                     :class="[
